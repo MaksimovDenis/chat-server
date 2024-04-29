@@ -1,74 +1,22 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"log"
-	"net"
-	"time"
 
-	desc "github.com/MaksimovDenis/chat-server/pkg/chatAPI_v1"
-	"github.com/brianvoe/gofakeit"
-	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-const grpcPort = 50051
-
-var t = time.Now()
-
-type server struct {
-	desc.UnimplementedChatAPIV1Server
-}
-
-func (s *server) Create(ctx context.Context, req *desc.CreateRequest) (*desc.CreateResponse, error) {
-	usernamesInfo := req.GetUsernames().Usernames
-
-	newUsername := &desc.ChatInfo{
-		Usernames: usernamesInfo,
-	}
-
-	return &desc.CreateResponse{
-		Id: newUsername.GetId(),
-	}, nil
-
-}
-
-func (s *server) Delete(ctx context.Context, req *desc.DeleteRequest) (*empty.Empty, error) {
-	chatID := req.GetId()
-
-	log.Printf("Delete chat with ID: %v", chatID)
-	return &empty.Empty{}, nil
-}
-
-func (s *server) SendMessage(ctx context.Context, req *desc.SendMessageRequest) (*empty.Empty, error) {
-
-	newMessage := &desc.Chat{
-		From:      gofakeit.BeerName(),
-		Text:      gofakeit.Company(),
-		Timestamp: timestamppb.Now(),
-	}
-
-	log.Printf("Message %v", newMessage)
-
-	return &empty.Empty{}, nil
-}
+const (
+	addres = "localhost:50051"
+	userID = 12
+)
 
 func main() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
+	conn, err := grpc.Dial(addres, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatalf("Failed to connect to server %v", err)
 	}
+	defer conn.Close()
 
-	s := grpc.NewServer()
-	reflection.Register(s)
-	desc.RegisterChatAPIV1Server(s, &server{})
-
-	log.Printf("server listening at %v", lis.Addr())
-
-	if err = s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
 }
